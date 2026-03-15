@@ -1,3 +1,9 @@
+# /// script
+# dependencies = [
+#   "aiohttp",
+# ]
+# ///
+
 import argparse
 import asyncio
 import zipfile
