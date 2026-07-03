@@ -29,10 +29,26 @@ def to_xhtml(s, root_path):
 
     for el in list(tree.iter()):
         for attr in ['href', 'src']:
-            if el.get(attr, '').startswith(root_path):
-                el.set(attr, el.get(attr).removeprefix(root_path))
+            value = el.get(attr) or ''
+            if value.startswith(root_path):
+                el.set(attr, value.removeprefix(root_path))
 
-    if tree.tag != 'html':
+    if tree.tag == 'html':
+        nsmap = dict(tree.nsmap or {})
+        if None not in nsmap:
+            nsmap[None] = 'http://www.w3.org/1999/xhtml'
+        if 'epub' not in nsmap:
+            nsmap['epub'] = 'http://www.idpf.org/2007/ops'
+        if nsmap != (tree.nsmap or {}):
+            new_root = etree.Element('html', nsmap=nsmap)
+            new_root.text = tree.text
+            new_root.tail = tree.tail
+            for child in tree:
+                new_root.append(child)
+            for key, value in tree.attrib.items():
+                new_root.set(key, value)
+            tree = new_root
+    else:
         wrapper = etree.Element('html', nsmap={
             None: 'http://www.w3.org/1999/xhtml',
             'epub': 'http://www.idpf.org/2007/ops',
@@ -69,7 +85,7 @@ async def fetch_book(book_id, zfh, session):
     async def download(url, path):
         async with session.get(url) as r:
             content = await r.read()
-            if path.endswith('.html'):
+            if path.endswith(('.html', '.xhtml')):
                 content = to_xhtml(content, root_path)
             zfh.writestr(path, content)
 
